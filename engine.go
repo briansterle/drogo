@@ -8,6 +8,11 @@ import (
 	"github.com/apache/arrow/go/arrow"
 )
 
+// struct embed arrow.Schema to add new methods + convenience
+type Schema struct {
+	*arrow.Schema
+}
+
 // abstraction on top of the arrow FieldVector
 type ColumnVector interface {
 	getType() arrow.Type
@@ -55,13 +60,13 @@ func (r *RecordBatch) Field(i int) ColumnVector {
 }
 
 type DataSource interface {
-	schema() *arrow.Schema
+	Schema() Schema
 	scan(projection []string) []RecordBatch
 }
 
 type LogicalPlan interface {
-	schema() *arrow.Schema
-	children() []LogicalPlan
+	Schema() Schema
+	Children() []LogicalPlan
 	String() string
 }
 
@@ -72,7 +77,7 @@ func Format(plan LogicalPlan, indent int) string {
 	}
 	sb.WriteString(plan.String())
 	sb.WriteRune('\n')
-	for _, child := range plan.children() {
+	for _, child := range plan.Children() {
 		sb.WriteString(Format(child, indent+1))
 	}
 	return sb.String()
@@ -88,7 +93,7 @@ type Column struct {
 }
 
 func (col *Column) ToField(input LogicalPlan) (*arrow.Field, error) {
-	for _, f := range input.schema().Fields() {
+	for _, f := range input.Schema().Fields() {
 		if f.Name == col.name {
 			return &f, nil
 		}
@@ -101,12 +106,12 @@ func (col *Column) String() string {
 }
 
 type LiteralString struct {
-	str string
+	Str string
 }
 
-func (lit *LiteralString) toField(input LogicalPlan) arrow.Field {
+func (lit *LiteralString) ToField(input LogicalPlan) arrow.Field {
 	return arrow.Field{
-		Name:     lit.str,
+		Name:     lit.Str,
 		Type:     arrow.BinaryTypes.String,
 		Nullable: true,
 		Metadata: arrow.Metadata{},
@@ -245,4 +250,42 @@ func Avg(input LogicalExpr) AggregateExpr {
 
 func Count(input LogicalExpr) AggregateExpr {
 	return AggregateExpr{"COUNT", input}
+}
+
+type Scan struct {
+	Path       string
+	Source     DataSource
+	Projection []string
+}
+
+func (s Schema) Select(projection []string) Schema {
+	fields := make([]arrow.Field, 0)
+	for _, columnName := range projection {
+		field, ok := s.FieldsByName(columnName)
+		if ok {
+			fields = append(fields, field...)
+		}
+	}
+	new := arrow.NewSchema(fields, nil)
+	return Schema{new}
+}
+
+func (s *Scan) Schema() Schema {
+	schema := s.Source.Schema()
+	if len(s.Projection) == 0 {
+		return schema
+	} else {
+		return schema.Select(s.Projection)
+	}
+}
+
+func (s *Scan) Children() []LogicalPlan {
+	return []LogicalPlan{}
+}
+
+func (s *Scan) String() string {
+	if len(s.Projection) == 0 {
+		return fmt.Sprintf("Scan: %s; projection=None", s.Path)
+	}
+	return fmt.Sprintf("Scan: %s; projection=%v", s.Path, s.Projection)
 }
