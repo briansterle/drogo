@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/apache/arrow/go/arrow"
@@ -79,6 +80,7 @@ func Format(plan LogicalPlan, indent int) string {
 
 type LogicalExpr interface {
 	toField(input LogicalPlan) arrow.Field
+	String() string
 }
 
 type Column struct {
@@ -109,4 +111,138 @@ func (lit *LiteralString) toField(input LogicalPlan) arrow.Field {
 		Nullable: true,
 		Metadata: arrow.Metadata{},
 	}
+}
+
+type LiteralInt64 struct {
+	n int64
+}
+
+func (lit *LiteralInt64) toField(input LogicalPlan) arrow.Field {
+	return arrow.Field{
+		Name:     strconv.Itoa(int(lit.n)),
+		Type:     arrow.PrimitiveTypes.Int64,
+		Nullable: true,
+		Metadata: arrow.Metadata{},
+	}
+}
+
+func (lit *LiteralInt64) String() string {
+	return strconv.Itoa(int(lit.n))
+}
+
+type BinaryExpr struct {
+	Name string
+	Op   string
+	L    LogicalExpr
+	R    LogicalExpr
+}
+
+func (be *BinaryExpr) String() string {
+	return fmt.Sprintf("%v %v %v", be.L, be.Op, be.R)
+}
+
+type BooleanBinaryExpr struct {
+	Name string
+	Op   string
+	L    LogicalExpr
+	R    LogicalExpr
+}
+
+func (be *BooleanBinaryExpr) ToField(input LogicalPlan) arrow.Field {
+	return arrow.Field{
+		Name: be.Name,
+		Type: arrow.FixedWidthTypes.Boolean,
+	}
+}
+
+func Eq(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
+	return BooleanBinaryExpr{"eq", "=", l, r}
+}
+
+func Neq(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
+	return BooleanBinaryExpr{"neq", "!=", l, r}
+}
+
+func Gt(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
+	return BooleanBinaryExpr{"gt", ">", l, r}
+}
+func GtEq(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
+	return BooleanBinaryExpr{"gteq", ">=", l, r}
+}
+func Lt(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
+	return BooleanBinaryExpr{"lt", "<", l, r}
+}
+func LtEq(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
+	return BooleanBinaryExpr{"lteq", "<=", l, r}
+}
+
+func And(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
+	return BooleanBinaryExpr{"and", "AND", l, r}
+}
+
+func Or(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
+	return BooleanBinaryExpr{"or", "OR", l, r}
+}
+
+type MathExpr struct {
+	Name string
+	Op   string
+	L    LogicalExpr
+	R    LogicalExpr
+}
+
+func Add(l LogicalExpr, r LogicalExpr) MathExpr {
+	return MathExpr{"add", "+", l, r}
+}
+
+func Subtract(l LogicalExpr, r LogicalExpr) MathExpr {
+	return MathExpr{"subtract", "-", l, r}
+}
+
+func Multiply(l LogicalExpr, r LogicalExpr) MathExpr {
+	return MathExpr{"multiply", "*", l, r}
+}
+
+func Divide(l LogicalExpr, r LogicalExpr) MathExpr {
+	return MathExpr{"divide", "/", l, r}
+}
+
+func Modulus(l LogicalExpr, r LogicalExpr) MathExpr {
+	return MathExpr{"modulus", "%", l, r}
+}
+
+type AggregateExpr struct {
+	Name string
+	Expr LogicalExpr
+}
+
+func (e *AggregateExpr) String() string {
+	return fmt.Sprintf("%s(%s)", e.Name, e.Expr.String())
+}
+
+func (e *AggregateExpr) toField(input LogicalPlan) arrow.Field {
+	return arrow.Field{
+		Name: e.Name,
+		Type: e.Expr.toField(input).Type,
+	}
+}
+
+func Sum(input LogicalExpr) AggregateExpr {
+	return AggregateExpr{"SUM", input}
+}
+
+func Min(input LogicalExpr) AggregateExpr {
+	return AggregateExpr{"MIN", input}
+}
+
+func Max(input LogicalExpr) AggregateExpr {
+	return AggregateExpr{"MAX", input}
+}
+
+func Avg(input LogicalExpr) AggregateExpr {
+	return AggregateExpr{"AVG", input}
+}
+
+func Count(input LogicalExpr) AggregateExpr {
+	return AggregateExpr{"COUNT", input}
 }
