@@ -1,3 +1,3 @@
 # Drogo Query Engine
 
-Drogo is a query engine written in pure Go and inspired by the design of Andy Grove's DataFusion (rust) and KQuery (kotlin)
+Drogo is a query engine written in pure Go and inspired by the design of [Andy Grove's](https://github.com/andygrove) [DataFusion](https://github.com/apache/arrow-datafusion) (rust) and KQuery (kotlin)
