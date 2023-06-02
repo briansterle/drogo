@@ -1,4 +1,4 @@
-module briansterle/drogo
+module github.com/briansterle/drogo
 
 go 1.20
 
