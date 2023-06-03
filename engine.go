@@ -43,7 +43,7 @@ func (v *LiteralValueVector) GetSize() int {
 
 // RecordBatch represents a batch of columnar data.
 type RecordBatch struct {
-	Schema *arrow.Schema
+	Schema Schema
 	Fields []ColumnVector
 }
 
@@ -60,8 +60,8 @@ func (r *RecordBatch) Field(i int) ColumnVector {
 }
 
 type DataSource interface {
-	Schema() Schema
-	scan(projection []string) []RecordBatch
+	GetSchema() Schema
+	Scan(projection []string) []RecordBatch
 }
 
 type LogicalPlan interface {
@@ -84,7 +84,7 @@ func Format(plan LogicalPlan, indent int) string {
 }
 
 type LogicalExpr interface {
-	toField(input LogicalPlan) arrow.Field
+	ToField(input LogicalPlan) arrow.Field
 	String() string
 }
 
@@ -92,16 +92,17 @@ type Column struct {
 	name string
 }
 
-func (col *Column) ToField(input LogicalPlan) (*arrow.Field, error) {
+func (col Column) ToField(input LogicalPlan) arrow.Field {
 	for _, f := range input.Schema().Fields() {
 		if f.Name == col.name {
-			return &f, nil
+			return f
 		}
 	}
-	return nil, fmt.Errorf("SQLError: No column named '$name'")
+	panic("SQLError: No column named '$name'")
+
 }
 
-func (col *Column) String() string {
+func (col Column) String() string {
 	return "#" + col.name
 }
 
@@ -109,7 +110,7 @@ type LiteralString struct {
 	Str string
 }
 
-func (lit *LiteralString) ToField(input LogicalPlan) arrow.Field {
+func (lit LiteralString) ToField(input LogicalPlan) arrow.Field {
 	return arrow.Field{
 		Name:     lit.Str,
 		Type:     arrow.BinaryTypes.String,
@@ -118,11 +119,15 @@ func (lit *LiteralString) ToField(input LogicalPlan) arrow.Field {
 	}
 }
 
+func (lit LiteralString) String() string {
+	return fmt.Sprintf("'%s'", lit.Str)
+}
+
 type LiteralInt64 struct {
 	n int64
 }
 
-func (lit *LiteralInt64) toField(input LogicalPlan) arrow.Field {
+func (lit *LiteralInt64) ToField(input LogicalPlan) arrow.Field {
 	return arrow.Field{
 		Name:     strconv.Itoa(int(lit.n)),
 		Type:     arrow.PrimitiveTypes.Int64,
@@ -142,7 +147,7 @@ type BinaryExpr struct {
 	R    LogicalExpr
 }
 
-func (be *BinaryExpr) String() string {
+func (be BinaryExpr) String() string {
 	return fmt.Sprintf("%v %v %v", be.L, be.Op, be.R)
 }
 
@@ -153,11 +158,15 @@ type BooleanBinaryExpr struct {
 	R    LogicalExpr
 }
 
-func (be *BooleanBinaryExpr) ToField(input LogicalPlan) arrow.Field {
+func (be BooleanBinaryExpr) ToField(input LogicalPlan) arrow.Field {
 	return arrow.Field{
 		Name: be.Name,
 		Type: arrow.FixedWidthTypes.Boolean,
 	}
+}
+
+func (be BooleanBinaryExpr) String() string {
+	return be.L.String() + " " + be.Op + " " + be.R.String()
 }
 
 func Eq(l LogicalExpr, r LogicalExpr) BooleanBinaryExpr {
@@ -228,7 +237,7 @@ func (e *AggregateExpr) String() string {
 func (e *AggregateExpr) toField(input LogicalPlan) arrow.Field {
 	return arrow.Field{
 		Name: e.Name,
-		Type: e.Expr.toField(input).Type,
+		Type: e.Expr.ToField(input).Type,
 	}
 }
 
@@ -270,8 +279,8 @@ func (s Schema) Select(projection []string) Schema {
 	return Schema{new}
 }
 
-func (s *Scan) Schema() Schema {
-	schema := s.Source.Schema()
+func (s Scan) Schema() Schema {
+	schema := s.Source.GetSchema()
 	if len(s.Projection) == 0 {
 		return schema
 	} else {
@@ -279,11 +288,11 @@ func (s *Scan) Schema() Schema {
 	}
 }
 
-func (s *Scan) Children() []LogicalPlan {
+func (s Scan) Children() []LogicalPlan {
 	return []LogicalPlan{}
 }
 
-func (s *Scan) String() string {
+func (s Scan) String() string {
 	if len(s.Projection) == 0 {
 		return fmt.Sprintf("Scan: %s; projection=None", s.Path)
 	}
@@ -295,20 +304,20 @@ type Projection struct {
 	Expr  []LogicalExpr
 }
 
-func (p *Projection) Schema() Schema {
+func (p Projection) Schema() Schema {
 	fields := []arrow.Field{}
 	for _, e := range p.Expr {
-		fields = append(fields, e.toField(p.Input))
+		fields = append(fields, e.ToField(p.Input))
 	}
 	return Schema{arrow.NewSchema(fields, nil)}
 }
 
-func (p *Projection) Children() []LogicalPlan {
+func (p Projection) Children() []LogicalPlan {
 	return []LogicalPlan{p.Input}
 }
 
-func (p *Projection) String() string {
-	strs := make([]string, len(p.Expr))
+func (p Projection) String() string {
+	strs := []string{}
 	for _, e := range p.Expr {
 		strs = append(strs, e.String())
 	}
@@ -321,15 +330,15 @@ type Selection struct {
 	Expr  LogicalExpr
 }
 
-func (s *Selection) Schema() Schema {
+func (s Selection) Schema() Schema {
 	return s.Input.Schema()
 }
 
-func (s *Selection) Children() []LogicalPlan {
+func (s Selection) Children() []LogicalPlan {
 	return []LogicalPlan{s.Input}
 }
 
-func (s *Selection) String() string {
+func (s Selection) String() string {
 	return fmt.Sprintf("Filter: %s", s.Expr.String())
 }
 
@@ -342,7 +351,7 @@ type Aggregate struct {
 func (a *Aggregate) Schema() Schema {
 	fields := []arrow.Field{}
 	for _, e := range a.GroupExpr {
-		fields = append(fields, e.toField(a.Input))
+		fields = append(fields, e.ToField(a.Input))
 	}
 	for _, e := range a.AggregateExpr {
 		fields = append(fields, e.toField(a.Input))
