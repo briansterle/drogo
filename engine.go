@@ -127,17 +127,34 @@ type LiteralInt64 struct {
 	n int64
 }
 
-func (lit *LiteralInt64) ToField(input LogicalPlan) arrow.Field {
+func (lit LiteralInt64) ToField(input LogicalPlan) arrow.Field {
 	return arrow.Field{
-		Name:     strconv.Itoa(int(lit.n)),
+		Name:     lit.String(),
 		Type:     arrow.PrimitiveTypes.Int64,
 		Nullable: true,
 		Metadata: arrow.Metadata{},
 	}
 }
 
-func (lit *LiteralInt64) String() string {
+func (lit LiteralInt64) String() string {
 	return strconv.Itoa(int(lit.n))
+}
+
+type LiteralFloat64 struct {
+	n float64
+}
+
+func (lit LiteralFloat64) ToField(input LogicalPlan) arrow.Field {
+	return arrow.Field{
+		Name:     lit.String(),
+		Type:     arrow.PrimitiveTypes.Float64,
+		Nullable: true,
+		Metadata: arrow.Metadata{},
+	}
+}
+
+func (lit LiteralFloat64) String() string {
+	return strconv.FormatFloat(lit.n, 'f', -1, 64)
 }
 
 type BinaryExpr struct {
@@ -203,6 +220,17 @@ type MathExpr struct {
 	Op   string
 	L    LogicalExpr
 	R    LogicalExpr
+}
+
+func (m MathExpr) String() string {
+	return fmt.Sprintf("%v %v %v", m.L, m.Op, m.R)
+}
+
+func (m MathExpr) ToField(input LogicalPlan) arrow.Field {
+	return arrow.Field{
+		Name: m.Name,
+		Type: arrow.PrimitiveTypes.Float64,
+	}
 }
 
 func Add(l LogicalExpr, r LogicalExpr) MathExpr {
@@ -348,7 +376,7 @@ type Aggregate struct {
 	AggregateExpr []AggregateExpr
 }
 
-func (a *Aggregate) Schema() Schema {
+func (a Aggregate) Schema() Schema {
 	fields := []arrow.Field{}
 	for _, e := range a.GroupExpr {
 		fields = append(fields, e.ToField(a.Input))
@@ -359,10 +387,10 @@ func (a *Aggregate) Schema() Schema {
 	return Schema{arrow.NewSchema(fields, nil)}
 }
 
-func (a *Aggregate) Children() []LogicalPlan {
+func (a Aggregate) Children() []LogicalPlan {
 	return []LogicalPlan{a.Input}
 }
 
-func (a *Aggregate) String() string {
+func (a Aggregate) String() string {
 	return fmt.Sprintf("Aggregate: groupExpr=%s, aggregateExpr=%s", a.GroupExpr, a.AggregateExpr)
 }
