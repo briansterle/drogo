@@ -15,29 +15,29 @@ type Schema struct {
 
 // abstraction on top of the arrow FieldVector
 type ColumnVector interface {
-	getType() arrow.Type
-	getValue(i int) interface{}
-	getSize() int
+	DataType() arrow.DataType
+	GetValue(i int) interface{}
+	Len() int
 }
 
 type LiteralValueVector struct {
-	arrowType arrow.Type
+	arrowType arrow.DataType
 	value     interface{}
 	size      int
 }
 
-func (v *LiteralValueVector) GetType() arrow.Type {
+func (v LiteralValueVector) DataType() arrow.DataType {
 	return v.arrowType
 }
 
-func (v *LiteralValueVector) GetValue(i int) (interface{}, error) {
+func (v LiteralValueVector) GetValue(i int) interface{} {
 	if i < 0 || i >= v.size {
-		return nil, fmt.Errorf("index out of bounds %d vecsize: %d", i, v.size)
+		panic(fmt.Sprintf("index out of bounds %d vecsize: %d", i, v.size))
 	}
-	return v.value, nil
+	return v.value
 }
 
-func (v *LiteralValueVector) GetSize() int {
+func (v LiteralValueVector) Len() int {
 	return v.size
 }
 
@@ -48,7 +48,7 @@ type RecordBatch struct {
 }
 
 func (r *RecordBatch) RowCount() int {
-	return r.Fields[0].getSize()
+	return r.Fields[0].Len()
 }
 
 func (r *RecordBatch) ColumnCount() int {
