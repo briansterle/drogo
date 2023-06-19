@@ -89,11 +89,11 @@ type MathExpression struct {
 
 type MathExpressionEvaluator interface {
 	Expression
-	evaluate(l interface{}, r interface{}, arrowType arrow.DataType) interface{}
+	evaluate(l any, r any, arrowType arrow.DataType) any
 }
 
 func (e MathExpression) Evaluate(l ColumnVector, r ColumnVector) ColumnVector {
-	values := make([]interface{}, l.Len())
+	values := make([]any, l.Len())
 	for i := 0; i < l.Len(); i++ {
 		value := e.evaluate(l.GetValue(i), r.GetValue(i), l.DataType())
 		values[i] = value

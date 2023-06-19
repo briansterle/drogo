@@ -10,11 +10,11 @@ type ArrowArray struct {
 	array.Interface
 }
 
-func (arr ArrowArray) GetValue(i int) interface{} {
+func (arr ArrowArray) GetValue(i int) any {
 	return arr.Data().Buffers()[i]
 }
 
-func Create(arrowType arrow.DataType, initialCapacity int, data []interface{}) ArrowArray {
+func Create(arrowType arrow.DataType, initialCapacity int, data []any) ArrowArray {
 	rootAllocator := memory.NewGoAllocator()
 	var arr array.Interface
 	switch arrowType.(type) {

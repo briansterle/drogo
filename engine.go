@@ -16,13 +16,13 @@ type Schema struct {
 // abstraction on top of the arrow FieldVector
 type ColumnVector interface {
 	DataType() arrow.DataType
-	GetValue(i int) interface{}
+	GetValue(i int) any
 	Len() int
 }
 
 type LiteralValueVector struct {
 	arrowType arrow.DataType
-	value     interface{}
+	value     any
 	size      int
 }
 
@@ -30,7 +30,7 @@ func (v LiteralValueVector) DataType() arrow.DataType {
 	return v.arrowType
 }
 
-func (v LiteralValueVector) GetValue(i int) interface{} {
+func (v LiteralValueVector) GetValue(i int) any {
 	if i < 0 || i >= v.size {
 		panic(fmt.Sprintf("index out of bounds %d vecsize: %d", i, v.size))
 	}
