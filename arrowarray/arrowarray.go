@@ -16,14 +16,15 @@ func (arr DroArray) Len() int {
 }
 
 func (arr DroArray) GetValue(i int) any {
-	panic("Not implemented")
+	// arr.Value(i)
+	panic("uninmplemented")
 }
 
 func (arr DroArray) DataType() arrow.DataType {
 	return arr.Array.DataType()
 }
 
-func Create(arrowType arrow.DataType, initialCapacity int, data []any) arrow.Array {
+func Create(arrowType arrow.DataType, initialCapacity int, data []any) DroArray {
 	rootAllocator := memory.NewGoAllocator()
 	var arr arrow.Array
 	switch arrowType.(type) {
