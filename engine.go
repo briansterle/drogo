@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/apache/arrow/go/arrow"
+	"github.com/apache/arrow/go/v12/arrow"
 )
 
 // struct embed arrow.Schema to add new methods + convenience

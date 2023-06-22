@@ -1,22 +1,31 @@
 package arrowarray
 
 import (
-	"github.com/apache/arrow/go/arrow"
-	"github.com/apache/arrow/go/arrow/array"
-	"github.com/apache/arrow/go/arrow/memory"
+	"github.com/apache/arrow/go/v12/arrow"
+	"github.com/apache/arrow/go/v12/arrow/array"
+	"github.com/apache/arrow/go/v12/arrow/memory"
 )
 
-type ArrowArray struct {
-	array.Interface
+type DroArray struct {
+	arrow.Array
 }
 
-func (arr ArrowArray) GetValue(i int) any {
-	return arr.Data().Buffers()[i]
+// impl ColumnVector for ArrowArray
+func (arr DroArray) Len() int {
+	return arr.Array.Len()
 }
 
-func Create(arrowType arrow.DataType, initialCapacity int, data []any) ArrowArray {
+func (arr DroArray) GetValue(i int) any {
+	panic("Not implemented")
+}
+
+func (arr DroArray) DataType() arrow.DataType {
+	return arr.Array.DataType()
+}
+
+func Create(arrowType arrow.DataType, initialCapacity int, data []any) arrow.Array {
 	rootAllocator := memory.NewGoAllocator()
-	var arr array.Interface
+	var arr arrow.Array
 	switch arrowType.(type) {
 	case *arrow.BooleanType:
 		vs := array.NewBooleanBuilder(rootAllocator)
@@ -77,5 +86,5 @@ func Create(arrowType arrow.DataType, initialCapacity int, data []any) ArrowArra
 	default:
 		panic("Unsupported Arrow type")
 	}
-	return ArrowArray{arr}
+	return DroArray{arr}
 }

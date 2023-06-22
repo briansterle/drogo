@@ -1,7 +1,7 @@
 package arrowtype
 
 import (
-	"github.com/apache/arrow/go/arrow"
+	"github.com/apache/arrow/go/v12/arrow"
 )
 
 var (

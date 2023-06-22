@@ -3,7 +3,7 @@ package engine
 import (
 	"strconv"
 
-	"github.com/apache/arrow/go/arrow"
+	"github.com/apache/arrow/go/v12/arrow"
 	"github.com/briansterle/drogo/arrowarray"
 	"github.com/briansterle/drogo/arrowtype"
 )
@@ -100,5 +100,5 @@ func (e MathExpression) Evaluate(l ColumnVector, r ColumnVector) ColumnVector {
 	}
 
 	arr := arrowarray.Create(l.DataType(), l.Len(), values)
-	return arr
+	return arrowarray.DroArray{Array: arr}
 }
