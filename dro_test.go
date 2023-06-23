@@ -1,7 +1,6 @@
 package drogo
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/apache/arrow/go/v12/arrow"
@@ -27,7 +26,6 @@ func TestCreate(t *testing.T) {
 	assert.Equal(t, "a", arr.GetValue(0), "should equal string")
 	assert.Equal(t, "b", arr.GetValue(1), "should equal string")
 	assert.Equal(t, "c", arr.GetValue(2), "should equal string")
-	fmt.Println(arr.String())
 	assert.Equal(t, `["a" "b" "c"]`, arr.String(), "should equal string")
 	assert.Equal(t, 3, arr.Len(), "should equal length")
 	assert.Equal(t, String, arr.DataType(), "should equal type")

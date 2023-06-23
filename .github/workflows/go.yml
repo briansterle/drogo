@@ -15,6 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build
-        run: go build
+        run: go build ./...
       - name: Run tests
-        run: go test
+        run: go test ./...
