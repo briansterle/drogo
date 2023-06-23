@@ -4,8 +4,7 @@ import (
 	"strconv"
 
 	"github.com/apache/arrow/go/v12/arrow"
-	"github.com/briansterle/drogo/arrowarray"
-	"github.com/briansterle/drogo/arrowtype"
+	"github.com/briansterle/drogo"
 )
 
 type PhysicalPlan interface {
@@ -35,7 +34,7 @@ type LiteralInt64Expression struct {
 }
 
 func (lit LiteralInt64Expression) Evaluate(input RecordBatch) ColumnVector {
-	return LiteralValueVector{arrowtype.Int64, lit.value, input.RowCount()}
+	return LiteralValueVector{drogo.Int64, lit.value, input.RowCount()}
 }
 
 type LiteralFloat64Expression struct {
@@ -43,7 +42,7 @@ type LiteralFloat64Expression struct {
 }
 
 func (lit LiteralFloat64Expression) Evaluate(input RecordBatch) ColumnVector {
-	return LiteralValueVector{arrowtype.Float64, lit.value, input.RowCount()}
+	return LiteralValueVector{drogo.Float64, lit.value, input.RowCount()}
 }
 
 type LiteralStringExpression struct {
@@ -51,7 +50,7 @@ type LiteralStringExpression struct {
 }
 
 func (lit LiteralStringExpression) Evaluate(input RecordBatch) ColumnVector {
-	return LiteralValueVector{arrowtype.String, lit.value, input.RowCount()}
+	return LiteralValueVector{drogo.String, lit.value, input.RowCount()}
 }
 
 type BinaryExpression struct {
@@ -99,6 +98,5 @@ func (e MathExpression) Evaluate(l ColumnVector, r ColumnVector) ColumnVector {
 		values[i] = value
 	}
 
-	arr := arrowarray.Create(l.DataType(), l.Len(), values)
-	return arrowarray.DroArray{Array: arr}
+	return drogo.New(l.DataType(), l.Len(), values)
 }
