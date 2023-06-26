@@ -32,6 +32,10 @@ func (col ColumnExpression) String() string {
 	return "#" + strconv.Itoa(col.i)
 }
 
+func (col ColumnExpression) ToField(plan LogicalPlan) arrow.Field {
+	return plan.Schema().Field(col.i)
+}
+
 type LiteralInt64Expression struct {
 	value int64
 }
@@ -294,31 +298,25 @@ func (s SelectionExec) Children() []PhysicalPlan {
 func (s SelectionExec) Execute() []RecordBatch {
 	input := s.Input.Execute()
 	output := make([]RecordBatch, len(input))
-
 	for i, batch := range input {
-
-		// colVec := s.Expr.Evaluate(batch)
-		// toByteVec := make([]byte, colVec.Len()/8+1)
-		// for j := 0; j < colVec.Len(); j++ {
-		// 	if colVec.Value(j).(bool) {
-		// 		toByteVec[j/8] |= 1 << uint(j%8)
-		// 	}
-		// }
-
-		// bitVector := bitutil.NewBitmapReader(colVec.Values)
-
+		result := s.Expr.Evaluate(batch)
+		schema := batch.Schema
+		columnCount := len(schema.Fields())
 		filtered := make([]ColumnVector, len(batch.Fields))
-		// for j := range batch.Fields {
-		// 	filtered[j] = filter(batch.Fields[i], bitVector)
-		// }
-		// todo bitmap stuff...
+		for j := 0; j < columnCount; j++ {
+			filtered[j] = filter(batch.Fields[j], result)
+		}
 		output[i] = RecordBatch{batch.Schema, filtered}
 	}
 	return output
 }
 
-// arrow bit vector
-
 func filter(v ColumnVector, selection ColumnVector) ColumnVector {
-	panic("not implemented") // todo
+	var filteredVector []any
+	for i := 0; i < selection.Len(); i++ {
+		if selection.GetValue(i).(bool) {
+			filteredVector = append(filteredVector, v.GetValue(i))
+		}
+	}
+	return drogo.New(v.DataType(), len(filteredVector), filteredVector)
 }
